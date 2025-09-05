@@ -1,32 +1,45 @@
 // app/api/solicitudes/route.ts
-import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
+// GET: lista últimas 100 solicitudes
 export async function GET() {
   const data = await prisma.solicitud.findMany({
-    orderBy: { fechaSolicitud: "desc" }
+    orderBy: { createdAt: 'desc' }, // ahora sí existe
+    take: 100,
   });
-  return NextResponse.json(data);
+  return Response.json(data);
 }
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  if (!body?.id || !body?.conductorNombre || !body?.placa || !body?.necesidad) {
-    return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+// POST: crea solicitud
+export async function POST(req: NextRequest) {
+  const { conductorNombre, unidad, placa, necesidad } = await req.json();
+
+  if (!conductorNombre || !placa || !necesidad) {
+    return Response.json(
+      { error: 'conductorNombre, placa y necesidad son obligatorios' },
+      { status: 400 }
+    );
   }
-  const created = await prisma.solicitud.create({
+
+  const nueva = await prisma.solicitud.create({
     data: {
-      id: body.id,
-      conductorNombre: body.conductorNombre,
-      unidad: body.unidad ?? "Ambulancia",
-      placa: body.placa.toUpperCase(),
-      necesidad: body.necesidad,
-      estado: "REVISION_TALLER",
-      firmaConductor: body.firmaConductor ?? null
-    }
+      // id NO se envía: lo genera @default(cuid())
+      conductorNombre,
+      unidad,
+      placa,
+      necesidad,
+      estado: 'SOLICITUD',
+    },
   });
-  return NextResponse.json(created, { status: 201 });
+
+  return Response.json(nueva, { status: 201 });
 }
+
+
+
+
+
 
 
 

@@ -1,24 +1,35 @@
 // app/api/solicitudes/[id]/route.ts
-import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = { params: { id: string } };
+
+// PUT: actualiza por id
+export async function PUT(req: NextRequest, { params }: Ctx) {
+  const id = params.id; // es String en el esquema
+  const data = await req.json();
+
+  // Evita modificar el id desde el body
+  if ('id' in data) delete data.id;
+
+  const updated = await prisma.solicitud.update({
+    where: { id },
+    data,
+  });
+
+  return Response.json(updated);
+}
+
+// DELETE: elimina por id
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const id = params.id;
-  const body = await request.json();
-  const updated = await prisma.solicitud.update({ where: { id }, data: body });
-  return NextResponse.json(updated);
+
+  await prisma.solicitud.delete({ where: { id } });
+
+  return new Response(null, { status: 204 });
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
-  await prisma.solicitud.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
-}
+
 
 
 
