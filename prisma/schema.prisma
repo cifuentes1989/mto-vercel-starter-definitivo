@@ -1,0 +1,55 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Estado {
+  SOLICITUD
+  REVISION_TALLER
+  APROBACION_COORD
+  REPARACION_EN_CURSO
+  ENTREGA
+  COMPLETADA
+}
+
+model Solicitud {
+  id                     String   @id
+  fechaSolicitud         DateTime @default(now())
+  estado                 Estado   @default(SOLICITUD)
+
+  conductorNombre        String
+  unidad                 String
+  placa                  String
+  necesidad              String
+
+  horaIngresoTaller      String?
+  diagnosticoTaller      String?
+  decisionCoord          String?
+  motivoRechazo          String?
+  inicioReparacion       String?
+  finReparacion          String?
+  actividades            String?
+  repuestos              String?
+  responsableReparacion  String?
+  horaSalidaTaller       String?
+  entregaSatisfaccion    String?
+
+  firmaConductor          String?
+  firmaTallerDiag         String?
+  firmaCoordAprob         String?
+  firmaReparacion         String?
+  firmaEntregaConductor   String?
+  firmaCoordFinal         String?
+
+  pdfDemoHTML             String?
+}
+
+
+
+
