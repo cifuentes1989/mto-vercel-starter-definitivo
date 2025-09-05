@@ -2,13 +2,14 @@
   "name": "mto-vercel-starter-definitivo",
   "private": true,
   "version": "1.0.0",
-  "scripts": {
+   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "prisma migrate deploy && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start -p 3000",
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
