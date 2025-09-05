@@ -9,17 +9,69 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Solicitud {
-  id               String   @id @default(cuid())
-  estado           String   @default("SOLICITUD")
-  conductorNombre  String
-  unidad           String
-  placa            String
-  necesidad        String
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now()) @updatedAt  // <- default + @updatedAt
+enum Estado {
+  SOLICITUD
+  REVISION_TALLER
+  APROBACION_COORD
+  REPARACION_EN_CURSO
+  ENTREGA
+  COMPLETADA
 }
+
+enum DecisionCoord {
+  APROBADO
+  RECHAZADO
+  ESPERA
+}
+
+enum EntregaSat {
+  OK
+  NO_CONFORME
+}
+
+model Solicitud {
+  // Usamos el radicado como ID legible
+  id                      String      @id
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  estado                  Estado
+
+  // Conductor
+  conductorNombre         String
+  unidad                  String      // Ambulancia | Movil
+  placa                   String
+  necesidad               String
+  firmaConductor          String?     // dataURL base64
+
+  // Taller (diagnóstico)
+  horaIngresoTaller       String?
+  diagnosticoTaller       String?
+  firmaTallerDiag         String?
+
+  // Coordinación (decisión)
+  decisionCoord           DecisionCoord?
+  motivoRechazo           String?
+  firmaCoordAprob         String?
+
+  // Reparación
+  inicioReparacion        String?
+  finReparacion           String?
+  actividades             String?
+  repuestos               String?
+  responsableReparacion   String?
+  horaSalidaTaller        String?
+  firmaReparacion         String?
+
+  // Entrega
+  entregaSatisfaccion     EntregaSat?
+  firmaEntregaConductor   String?
+
+  // Cierre
+  firmaCoordFinal         String?
+  pdfDemoHTML             String?     // opcional: para la demo de “imprimir”
+}
+
 
 
 
