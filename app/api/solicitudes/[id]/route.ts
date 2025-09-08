@@ -1,56 +1,66 @@
+
 // app/api/solicitudes/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { Estado, Prisma } from "@prisma/client";
 
-type Params = { params: { id: string } };
+// GET /api/solicitudes/:id
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id; // string
+  if (!id) return NextResponse.json({ error: "id inválido" }, { status: 400 });
 
-// GET /api/solicitudes/:id  -> detalle
-export async function GET(_: Request, { params }: Params) {
   try {
-    const s = await prisma.solicitud.findUnique({
-      where: { id: params.id }, // id es string
-    });
+    const s = await prisma.solicitud.findUnique({ where: { id } });
     if (!s) return NextResponse.json({ error: "No existe" }, { status: 404 });
     return NextResponse.json(s);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Error" }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Consulta falló" }, { status: 500 });
   }
 }
 
-// PUT /api/solicitudes/:id  -> actualización general (coordinación / taller / entrega, etc.)
-export async function PUT(req: Request, { params }: Params) {
+// PUT /api/solicitudes/:id
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id; // string
+  if (!id) return NextResponse.json({ error: "id inválido" }, { status: 400 });
+
   try {
     const body = await req.json();
 
-    // Permitimos actualizar solo campos conocidos
-    const allowed: any = {};
-    for (const k of [
-      "estado",
-      "diagnosticoTaller",
-      "decisionCoord",
-      "motivoRechazo",
-      "inicioReparacion",
-      "finReparacion",
-      "actividades",
-      "repuestos",
-      "responsableReparacion",
-      "horaSalidaTaller",
-      "entregaSat",
-      "conductorNombre",
-      "unidad",
-      "placa",
-      "necesidad",
-    ]) {
-      if (k in body) allowed[k] = body[k];
-    }
+    const data: Prisma.SolicitudUpdateInput = {};
+    if (body.conductorNombre !== undefined) data.conductorNombre = String(body.conductorNombre);
+    if (body.unidad !== undefined) data.unidad = String(body.unidad);
+    if (body.placa !== undefined) data.placa = String(body.placa).toUpperCase();
+    if (body.necesidad !== undefined) data.necesidad = String(body.necesidad);
+    if (body.estado !== undefined) data.estado = body.estado as Estado;
 
-    const updated = await prisma.solicitud.update({
-      where: { id: params.id },
-      data: allowed,
-    });
-
+    const updated = await prisma.solicitud.update({ where: { id }, data });
     return NextResponse.json(updated);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Error" }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Actualización falló" }, { status: 500 });
+  }
+}
+
+// DELETE /api/solicitudes/:id
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id; // string
+  if (!id) return NextResponse.json({ error: "id inválido" }, { status: 400 });
+
+  try {
+    await prisma.solicitud.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Eliminación falló" }, { status: 500 });
   }
 }

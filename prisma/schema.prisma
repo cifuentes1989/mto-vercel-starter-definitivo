@@ -9,7 +9,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Enums del flujo
 enum Estado {
   SOLICITUD
   REVISION_TALLER
@@ -19,54 +18,16 @@ enum Estado {
   COMPLETADA
 }
 
-enum DecisionCoord {
-  APROBADO
-  RECHAZADO
-  ESPERA
-}
-
-enum EntregaSat {
-  OK
-  NO_CONFORME
-}
-
 model Solicitud {
-  id                 String      @id
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  // Usamos el radicado como id String (clave primaria)
+  id              String   @id @db.VarChar(40)
 
-  // Básico (conductor)
-  conductorNombre    String
-  unidad             String
-  placa              String
-  necesidad          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  // Estado de proceso
-  estado             Estado      @default(SOLICITUD)
-
-  // Taller – diagnóstico
-  horaIngresoTaller  String?
-  diagnosticoTaller  String?
-  firmaTallerDiag    String?
-
-  // Coordinación – decisión
-  decisionCoord      DecisionCoord?
-  motivoRechazo      String?
-  firmaCoordAprob    String?
-
-  // Reparación
-  inicioReparacion   String?
-  finReparacion      String?
-  actividades        String?
-  repuestos          String?
-  responsableReparacion String?
-  horaSalidaTaller   String?
-  firmaReparacion    String?
-
-  // Entrega
-  entregaSatisfaccion EntregaSat?
-  firmaEntregaConductor String?
-
-  // Cierre
-  firmaCoordFinal    String?
+  conductorNombre String
+  unidad          String
+  placa           String
+  necesidad       String
+  estado          Estado   @default(REVISION_TALLER)
 }

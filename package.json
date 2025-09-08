@@ -1,14 +1,14 @@
+
 {
   "name": "mto-vercel-starter-definitivo",
   "private": true,
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start -p 3000",
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
@@ -18,8 +18,6 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.5.2",
-    "@types/react": "^18.3.5",
     "prisma": "^5.22.0",
     "typescript": "^5.6.2"
   }

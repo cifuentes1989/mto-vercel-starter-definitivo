@@ -1,50 +1,47 @@
 // app/api/solicitudes/route.ts
-import { NextResponse } from "next/server";
-import { prisma, nextRadicado } from "../../../lib/prisma";
+import { NextResponse, NextRequest } from "next/server";
+import { prisma } from "../../../lib/prisma";
+import { Estado, Prisma } from "@prisma/client";
 
-// GET /api/solicitudes  -> lista
+// Genera un radicado único simple tipo "SM-YYYYMM-XXXXXX"
+function nextRadicado(): string {
+  const d = new Date();
+  const ym = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `SM-${ym}-${rand}`;
+}
+
+// GET /api/solicitudes  -> lista todas
 export async function GET() {
   try {
     const data = await prisma.solicitud.findMany({
       orderBy: { createdAt: "desc" },
-      take: 200,
     });
     return NextResponse.json(data);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Error" }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Listado falló" }, { status: 500 });
   }
 }
 
-// POST /api/solicitudes  -> crea una solicitud nueva
-// body: { conductorNombre, unidad, placa, necesidad }
-export async function POST(req: Request) {
+// POST /api/solicitudes -> crea una nueva (con id String)
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { conductorNombre, unidad, placa, necesidad } = body || {};
 
-    if (!conductorNombre || !unidad || !placa || !necesidad) {
-      return NextResponse.json(
-        { error: "Faltan campos requeridos" },
-        { status: 400 }
-      );
-    }
+    const data: Prisma.SolicitudCreateInput = {
+      id: nextRadicado(), // <- OBLIGATORIO porque el id es String @id
+      conductorNombre: String(body.conductorNombre ?? ""),
+      unidad: String(body.unidad ?? ""),
+      placa: String(body.placa ?? "").toUpperCase(),
+      necesidad: String(body.necesidad ?? ""),
+      estado: (body.estado as Estado) ?? "REVISION_TALLER",
+    };
 
-    // OJO: aquí seteamos id y estado explícitos para evitar TS/Prisma errors.
-    const created = await prisma.solicitud.create({
-      data: {
-        id: nextRadicado(),            // si en tu schema el id ya tiene default(cuid()) puedes quitarlo
-        estado: "REVISION_TALLER",     // usamos string literal (debe existir en tu enum Estado)
-        conductorNombre,
-        unidad,
-        placa,
-        necesidad,
-      },
-    });
-
+    const created = await prisma.solicitud.create({ data });
     return NextResponse.json(created, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Error" }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Creación falló" }, { status: 500 });
   }
 }
-
-
