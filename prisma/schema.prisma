@@ -1,12 +1,12 @@
 // prisma/schema.prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum Estado {
@@ -19,15 +19,14 @@ enum Estado {
 }
 
 model Solicitud {
-  // Usamos el radicado como id String (clave primaria)
-  id              String   @id @db.VarChar(40)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id              Int      @id @default(autoincrement())
+  radicado        String   @unique
   conductorNombre String
   unidad          String
   placa           String
   necesidad       String
-  estado          Estado   @default(REVISION_TALLER)
+  estado          Estado   @default(SOLICITUD)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
+

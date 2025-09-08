@@ -1,322 +1,338 @@
-'use client';
+// app/mantenimiento/page.tsx
+"use client";
 
-import * as React from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 
-/** ==== Tipos de UI (ligeros, no los del server) ==== */
+/** ==== Tipos ========================================================= */
 type Estado =
-  | 'SOLICITUD'
-  | 'REVISION_TALLER'
-  | 'APROBACION_COORD'
-  | 'REPARACION_EN_CURSO'
-  | 'ENTREGA'
-  | 'COMPLETADA';
+  | "SOLICITUD"
+  | "REVISION_TALLER"
+  | "APROBACION_COORD"
+  | "REPARACION_EN_CURSO"
+  | "ENTREGA"
+  | "COMPLETADA";
 
-type Rol = 'CONDUCTOR' | 'TALLER' | 'COORDINACION';
+type Rol = "CONDUCTOR" | "TALLER" | "COORDINACION" | "ADMIN";
 
-type Solicitud = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
+interface Solicitud {
+  id: number;
+  radicado: string;
   conductorNombre: string;
   unidad: string;
   placa: string;
   necesidad: string;
   estado: Estado;
-};
+  createdAt: string;
+  updatedAt: string;
+}
 
-/** ==== Helpers de UI tipados ==== */
-const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input
-    {...props}
-    style={{
-      width: '100%',
-      border: '1px solid #cbd5e1',
-      borderRadius: 8,
-      padding: '8px 10px',
-      ...(props.style || {}),
-    }}
-  />
-);
+/** ==== UI Helpers ==================================================== */
+function Card({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`card ${className ?? ""}`}>{children}</div>;
+}
 
-const TextArea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea
-    {...props}
-    style={{
-      width: '100%',
-      minHeight: 80,
-      border: '1px solid #cbd5e1',
-      borderRadius: 8,
-      padding: '8px 10px',
-      ...(props.style || {}),
-    }}
-  />
-);
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span style={{ fontSize: 14, color: "#475569" }}>{label}</span>
+      {children}
+    </label>
+  );
+}
 
-const Select = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select
-    {...props}
-    style={{
-      width: '100%',
-      border: '1px solid #cbd5e1',
-      borderRadius: 8,
-      padding: '8px 10px',
-      ...(props.style || {}),
-    }}
-  />
-);
-
-const Button: React.FC<
-  { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>
-> = ({ children, ...rest }) => (
-  <button
-    {...rest}
-    style={{
-      background: '#0369a1',
-      color: 'white',
-      borderRadius: 10,
-      fontWeight: 600,
-      padding: '8px 14px',
-      border: 'none',
-      cursor: 'pointer',
-      ...(rest.style || {}),
-    }}
+function Input(
+  props: React.DetailedHTMLProps<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    HTMLInputElement
   >
-    {children}
-  </button>
-);
+) {
+  return <input {...props} className={`input ${props.className ?? ""}`} />;
+}
 
-/** ==== Página ==== */
-export default function MantenimientoPage() {
-  const [rol, setRol] = React.useState<Rol>('CONDUCTOR');
-  const [usuario] = React.useState('Usuario Demo');
+function Textarea(
+  props: React.DetailedHTMLProps<
+    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+    HTMLTextAreaElement
+  >
+) {
+  return <textarea {...props} className={`textarea ${props.className ?? ""}`} />;
+}
 
-  // form creación
-  const [conductorNombre, setConductorNombre] = React.useState('');
-  const [unidad, setUnidad] = React.useState<'Ambulancia' | 'Movil'>('Ambulancia');
-  const [placa, setPlaca] = React.useState('');
-  const [necesidad, setNecesidad] = React.useState('');
+function Select(
+  props: React.DetailedHTMLProps<
+    React.SelectHTMLAttributes<HTMLSelectElement>,
+    HTMLSelectElement
+  >
+) {
+  return <select {...props} className={`select ${props.className ?? ""}`} />;
+}
 
-  const [items, setItems] = React.useState<Solicitud[]>([]);
-  const [errMsg, setErrMsg] = React.useState<string>('');
+function Button({
+  children,
+  variant,
+  ...rest
+}: {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary" | "danger";
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const base = "btn";
+  const cls =
+    variant === "secondary"
+      ? "btn btn-secondary"
+      : variant === "danger"
+      ? "btn btn-danger"
+      : base;
+  return (
+    <button {...rest} className={cls}>
+      {children}
+    </button>
+  );
+}
 
-  /** Handlers TIPADOS (evitamos “any”) */
-  const onRolChange: React.ChangeEventHandler<HTMLSelectElement> = (e) =>
-    setRol(e.target.value as Rol);
+/** ==== Página ======================================================== */
+export default function Page() {
+  const [rol, setRol] = useState<Rol>("CONDUCTOR");
+  const [usuario] = useState<string>("Usuario Demo");
 
-  const onConductorChange: React.ChangeEventHandler<HTMLInputElement> = (e) =>
-    setConductorNombre(e.target.value);
+  const [items, setItems] = useState<Solicitud[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
-  const onUnidadChange: React.ChangeEventHandler<HTMLSelectElement> = (e) =>
-    setUnidad(e.target.value as 'Ambulancia' | 'Movil');
-
-  const onPlacaChange: React.ChangeEventHandler<HTMLInputElement> = (e) =>
-    setPlaca(e.target.value.toUpperCase());
-
-  const onNecesidadChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) =>
-    setNecesidad(e.target.value);
+  // formulario
+  const [conductorNombre, setConductorNombre] = useState("");
+  const [unidad, setUnidad] = useState("Ambulancia");
+  const [placa, setPlaca] = useState("ABC123");
+  const [necesidad, setNecesidad] = useState("");
 
   /** Cargar lista */
-  async function load() {
-    setErrMsg('');
+  async function cargar() {
+    setErrorMsg("");
+    setLoading(true);
     try {
-      const r = await fetch('/api/solicitudes', { cache: 'no-store' });
+      const r = await fetch("/api/solicitudes", { cache: "no-store" });
       if (!r.ok) {
-        const t = await r.text();
-        throw new Error(`GET /api/solicitudes ${r.status}: ${t}`);
+        const txt = await r.text();
+        throw new Error(`GET /api/solicitudes ${r.status}: ${txt}`);
       }
-      const j: Solicitud[] = await r.json();
-      setItems(j);
-    } catch (err: any) {
-      setErrMsg(String(err?.message ?? err));
+      const data = (await r.json()) as Solicitud[];
+      setItems(data);
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg(e?.message || "Fallo al listar");
+    } finally {
+      setLoading(false);
     }
   }
 
-  /** Crear solicitud (flujo conductor) */
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  /** Crear */
   async function crear() {
-    setErrMsg('');
+    setErrorMsg("");
+    if (!conductorNombre || !placa || !necesidad) {
+      setErrorMsg("Completa: Conductor, Placa y Necesidad");
+      return;
+    }
     try {
-      if (!conductorNombre || !placa || !necesidad) {
-        alert('Completa nombre, placa y necesidad');
-        return;
-      }
-      const r = await fetch('/api/solicitudes', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+      const r = await fetch("/api/solicitudes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           conductorNombre,
           unidad,
           placa,
           necesidad,
-          // estado lo define el API por defecto (REVISION_TALLER)
         }),
       });
       if (!r.ok) {
-        const t = await r.text();
-        throw new Error(`POST /api/solicitudes ${r.status}: ${t}`);
+        const txt = await r.text();
+        throw new Error(`POST /api/solicitudes ${r.status}: ${txt}`);
       }
-      // limpiar y recargar
-      setConductorNombre('');
-      setPlaca('');
-      setNecesidad('');
-      await load();
-    } catch (err: any) {
-      setErrMsg(String(err?.message ?? err));
+      setConductorNombre("");
+      setPlaca("ABC123");
+      setNecesidad("");
+      await cargar();
+      // cambio de rol para continuar flujo demo
+      setRol("TALLER");
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg(e?.message || "Fallo al crear");
     }
   }
 
-  React.useEffect(() => {
-    load();
-  }, []);
+  /** Bandeja por rol (demo) */
+  const pendientes = useMemo(() => {
+    const mapa: Record<Rol, Estado[]> = {
+      CONDUCTOR: ["SOLICITUD", "ENTREGA"],
+      TALLER: ["REVISION_TALLER", "REPARACION_EN_CURSO"],
+      COORDINACION: ["APROBACION_COORD", "ENTREGA"],
+      ADMIN: [
+        "SOLICITUD",
+        "REVISION_TALLER",
+        "APROBACION_COORD",
+        "REPARACION_EN_CURSO",
+        "ENTREGA",
+        "COMPLETADA",
+      ],
+    };
+    return items.filter((x) => mapa[rol].includes(x.estado));
+  }, [items, rol]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      {/* Header */}
-      <div
-        style={{
-          background: '#0c4a6e',
-          color: 'white',
-          padding: '10px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ fontWeight: 700 }}>🛠️ Mantenimiento — Producción (Demo)</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Select value={rol} onChange={onRolChange}>
+    <>
+      {/* Topbar */}
+      <div className="topbar">
+        <div>🛠️ Mantenimiento — Producción (Demo)</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Select
+            value={rol}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setRol(e.target.value as Rol)
+            }
+          >
             <option value="CONDUCTOR">CONDUCTOR</option>
             <option value="TALLER">TALLER</option>
             <option value="COORDINACION">COORDINACION</option>
+            <option value="ADMIN">ADMIN</option>
           </Select>
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              padding: '6px 10px',
-              borderRadius: 12,
-            }}
-          >
-            {usuario}
-          </div>
+          <span className="badge">{usuario}</span>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 16 }}>
-        {/* Mensaje de error si algo falla */}
-        {errMsg && (
+      <div className="container">
+        {errorMsg && (
           <div
             style={{
-              background: '#fee2e2',
-              border: '1px solid #fecaca',
-              color: '#991b1b',
-              padding: 10,
-              borderRadius: 10,
+              background: "#fee2e2",
+              border: "1px solid #fecaca",
+              color: "#991b1b",
+              padding: "8px 12px",
+              borderRadius: 12,
               marginBottom: 12,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas',
-              whiteSpace: 'pre-wrap',
+              fontSize: 14,
             }}
           >
-            {errMsg}
+            {errorMsg}
           </div>
         )}
 
         {/* Nueva Solicitud */}
-        {(rol === 'CONDUCTOR' || rol === 'COORDINACION') && (
-          <div
-            style={{
-              background: 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 16,
-            }}
-          >
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>1) Nueva solicitud</div>
+        {(rol === "CONDUCTOR" || rol === "ADMIN") && (
+          <Card>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>
+              1) Nueva solicitud
+            </div>
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 10,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
               }}
             >
-              <div>
-                <div style={{ fontSize: 12, color: '#475569' }}>Nombre Conductor</div>
-                <Input value={conductorNombre} onChange={onConductorChange} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: '#475569' }}>Unidad</div>
-                <Select value={unidad} onChange={onUnidadChange}>
-                  <option value="Ambulancia">Ambulancia</option>
-                  <option value="Movil">Movil</option>
+              <Field label="Nombre Conductor">
+                <Input
+                  value={conductorNombre}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setConductorNombre(e.target.value)
+                  }
+                />
+              </Field>
+              <Field label="Unidad">
+                <Select
+                  value={unidad}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setUnidad(e.target.value)
+                  }
+                >
+                  <option>Ambulancia</option>
+                  <option>Movil</option>
                 </Select>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: '#475569' }}>Placa</div>
-                <Input value={placa} onChange={onPlacaChange} placeholder="ABC123" />
-              </div>
+              </Field>
+              <Field label="Placa">
+                <Input
+                  value={placa}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPlaca(e.target.value.toUpperCase())
+                  }
+                />
+              </Field>
               <div />
-              <div style={{ gridColumn: '1 / -1' }}>
-                <div style={{ fontSize: 12, color: '#475569' }}>Necesidad / Descripción</div>
-                <TextArea value={necesidad} onChange={onNecesidadChange} />
-              </div>
+              <Field label="Necesidad / Descripción">
+                <Textarea
+                  value={necesidad}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setNecesidad(e.target.value)
+                  }
+                />
+              </Field>
             </div>
 
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 12 }}>
               <Button onClick={crear}>Enviar a Taller</Button>
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* Listado */}
-        <div
-          style={{
-            background: 'white',
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontWeight: 700 }}>Solicitudes</div>
-            <Button onClick={load} style={{ background: '#334155' }}>
-              Refrescar
+        {/* Tabla */}
+        <Card style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ fontWeight: 600 }}>Solicitudes</div>
+            <Button variant="secondary" onClick={cargar} disabled={loading}>
+              {loading ? "Cargando..." : "Refrescar"}
             </Button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', color: '#475569' }}>
-                  <th style={{ padding: '6px 4px' }}>ID</th>
-                  <th>Estado</th>
-                  <th>Placa</th>
-                  <th>Unidad</th>
-                  <th>Conductor</th>
-                  <th>Necesidad</th>
+          <table className="table" style={{ marginTop: 8 }}>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Radicado</th>
+                <th>Estado</th>
+                <th>Placa</th>
+                <th>Unidad</th>
+                <th>Conductor</th>
+                <th>Necesidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendientes.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.id}</td>
+                  <td>{s.radicado}</td>
+                  <td>
+                    <span className="badge">{s.estado}</span>
+                  </td>
+                  <td>{s.placa}</td>
+                  <td>{s.unidad}</td>
+                  <td>{s.conductorNombre}</td>
+                  <td>{s.necesidad}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {items.map((s) => (
-                  <tr key={s.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 4px' }}>{s.id}</td>
-                    <td>{s.estado}</td>
-                    <td>{s.placa}</td>
-                    <td>{s.unidad}</td>
-                    <td>{s.conductorNombre}</td>
-                    <td>{s.necesidad}</td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#94a3b8' }}>
-                      No hay registros aún
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              ))}
+              {pendientes.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center", color: "#94a3b8" }}>
+                    No hay registros aún
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Card>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,47 +1,59 @@
 // app/api/solicitudes/route.ts
-import { NextResponse, NextRequest } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { Estado, Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
+import { prisma, nextRadicado } from "../../../lib/prisma";
 
-// Genera un radicado único simple tipo "SM-YYYYMM-XXXXXX"
-function nextRadicado(): string {
-  const d = new Date();
-  const ym = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `SM-${ym}-${rand}`;
-}
-
-// GET /api/solicitudes  -> lista todas
 export async function GET() {
   try {
     const data = await prisma.solicitud.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { id: "desc" },
+      take: 100,
     });
     return NextResponse.json(data);
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/solicitudes error:", err);
     return NextResponse.json({ error: "Listado falló" }, { status: 500 });
   }
 }
 
-// POST /api/solicitudes -> crea una nueva (con id String)
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    const data: Prisma.SolicitudCreateInput = {
-      id: nextRadicado(), // <- OBLIGATORIO porque el id es String @id
-      conductorNombre: String(body.conductorNombre ?? ""),
-      unidad: String(body.unidad ?? ""),
-      placa: String(body.placa ?? "").toUpperCase(),
-      necesidad: String(body.necesidad ?? ""),
-      estado: (body.estado as Estado) ?? "REVISION_TALLER",
+    const { conductorNombre, unidad, placa, necesidad } = body as {
+      conductorNombre: string;
+      unidad: string;
+      placa: string;
+      necesidad: string;
     };
 
-    const created = await prisma.solicitud.create({ data });
+    if (!conductorNombre || !placa || !necesidad) {
+      return NextResponse.json(
+        { error: "Faltan campos obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    // correlativo simple (evita colisiones en baja concurrencia)
+    const last = await prisma.solicitud.findFirst({
+      select: { id: true },
+      orderBy: { id: "desc" },
+    });
+    const next = (last?.id ?? 0) + 1;
+
+    const created = await prisma.solicitud.create({
+      data: {
+        id: next,
+        radicado: nextRadicado(next),
+        conductorNombre,
+        unidad,
+        placa,
+        necesidad,
+        estado: "REVISION_TALLER",
+      },
+    });
+
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
-    console.error(err);
+    console.error("POST /api/solicitudes error:", err);
     return NextResponse.json({ error: "Creación falló" }, { status: 500 });
   }
 }
