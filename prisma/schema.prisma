@@ -9,6 +9,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Enums del flujo
 enum Estado {
   SOLICITUD
   REVISION_TALLER
@@ -30,49 +31,42 @@ enum EntregaSat {
 }
 
 model Solicitud {
-  // Usamos el radicado como ID legible
-  id                      String      @id
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
+  id                 String      @id
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
-  estado                  Estado
+  // Básico (conductor)
+  conductorNombre    String
+  unidad             String
+  placa              String
+  necesidad          String
 
-  // Conductor
-  conductorNombre         String
-  unidad                  String      // Ambulancia | Movil
-  placa                   String
-  necesidad               String
-  firmaConductor          String?     // dataURL base64
+  // Estado de proceso
+  estado             Estado      @default(SOLICITUD)
 
-  // Taller (diagnóstico)
-  horaIngresoTaller       String?
-  diagnosticoTaller       String?
-  firmaTallerDiag         String?
+  // Taller – diagnóstico
+  horaIngresoTaller  String?
+  diagnosticoTaller  String?
+  firmaTallerDiag    String?
 
-  // Coordinación (decisión)
-  decisionCoord           DecisionCoord?
-  motivoRechazo           String?
-  firmaCoordAprob         String?
+  // Coordinación – decisión
+  decisionCoord      DecisionCoord?
+  motivoRechazo      String?
+  firmaCoordAprob    String?
 
   // Reparación
-  inicioReparacion        String?
-  finReparacion           String?
-  actividades             String?
-  repuestos               String?
-  responsableReparacion   String?
-  horaSalidaTaller        String?
-  firmaReparacion         String?
+  inicioReparacion   String?
+  finReparacion      String?
+  actividades        String?
+  repuestos          String?
+  responsableReparacion String?
+  horaSalidaTaller   String?
+  firmaReparacion    String?
 
   // Entrega
-  entregaSatisfaccion     EntregaSat?
-  firmaEntregaConductor   String?
+  entregaSatisfaccion EntregaSat?
+  firmaEntregaConductor String?
 
   // Cierre
-  firmaCoordFinal         String?
-  pdfDemoHTML             String?     // opcional: para la demo de “imprimir”
+  firmaCoordFinal    String?
 }
-
-
-
-
-
